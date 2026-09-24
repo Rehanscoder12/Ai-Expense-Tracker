@@ -1,5 +1,4 @@
-const Groq = require("groq-sdk")
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY })
+const { GoogleGenerativeAI } = require("@google/generative-ai")
 const asyncHandler = require("express-async-handler")
 const Conversation = require("../models/conversationSchema")
 
@@ -19,7 +18,7 @@ const handleChat = asyncHandler(async (req, res) => {
         });
     }
     try {
-        let conversation = await Conversation.findOne({ userId })
+        let conversation = await Conversation.findOne({ where: { userId } })
         if (!conversation) {
             conversation = new Conversation({
                 userId,
@@ -74,22 +73,27 @@ const handleChat = asyncHandler(async (req, res) => {
                     Bot: "Definitely! You currently have **$63,930** in savings, so you can easily purchase a bike without denting your financial security. Go for it! 🚲
                     `
         }
-        const messagesToSend = [
-                systemMessage,
-                ...conversation.messages.slice(-10).map(m=>({
-                    role: m.role,
-                    content: m.content
-                })),
-                {role: 'user', content: message}
-            ]
-
-        const completions = await groq.chat.completions.create({
-            model: process.env.GROQ_MODEL,
-            messages: messagesToSend,
-            temperature: 0.7,
-            max_tokens: 150,
-        })
-        const answer = await completions.choices[0].message.content
+        if (!process.env.GEMINI_API_KEY) {
+            throw new Error("GEMINI_API_KEY is not configured");
+        }
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+            systemInstruction: systemMessage.content
+        });
+        const history = (conversation.messages || [])
+            .slice(-10)
+            .filter(m => m.role === "user" || m.role === "assistant")
+            .map(m => ({
+                role: m.role === "assistant" ? "model" : "user",
+                parts: [{ text: m.content }]
+            }));
+        const chat = model.startChat({
+            history,
+            generationConfig: { temperature: 0.7, maxOutputTokens: 150 }
+        });
+        const result = await chat.sendMessage(message);
+        const answer = result.response.text();
         await conversation.addMessage('user', message)
         await conversation.addMessage('assistant', answer)
         console.log(`💾 Saved. Total messages: ${conversation.messages.length}`);

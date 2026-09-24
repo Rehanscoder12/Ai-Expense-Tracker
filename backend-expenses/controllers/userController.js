@@ -9,7 +9,7 @@ const register = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error("All fields are mandatory!")
     }
-    const userAvailable = await User.findOne({ email })
+    const userAvailable = await User.findOne({ where: { email: email.trim().toLowerCase() } })
     if (userAvailable) {
         res.status(400)
         throw new Error("User already registered!");
@@ -36,7 +36,7 @@ const login = asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error("All fields are mandatory!")
     }
-    const user = await User.findOne({ email })
+    const user = await User.findOne({ where: { email: email.trim().toLowerCase() } })
     if (!user) {
         res.status(400)
         throw new Error("User not registered!");
@@ -45,12 +45,12 @@ const login = asyncHandler(async (req, res) => {
         const token = jwt.sign(
             {
                 user: {
-                    _id: user._id,
+                    _id: user.id,
                     userName: user.userName,
                     email: user.email
                 }
             },
-            process.env.SECRET_KEY,
+            process.env.JWT_SECRET,
             {expiresIn: "1h"}
         )
         res.cookie("token", token, {
@@ -79,7 +79,7 @@ const logout = asyncHandler(async(req, res)=>{
 const info = asyncHandler(async(req, res)=>{
     console.log(req.cookies.token);
     if(!req.user) {
-        res.status(400).json("User is not authorized!")
+        return res.status(400).json("User is not authorized!")
     }
     res.status(200).json({
         _id: req.user._id,

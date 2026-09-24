@@ -1,11 +1,10 @@
 const express  = require("express") 
-const dotenv = require("dotenv").config();
+require("dotenv").config();
 const cors = require("cors")
 const port = process.env.PORT || 5000
 const app = express()
-const connectDB = require("./config/connectDB");
+const { connectDB } = require("./config/connectDB");
 const cookieParser = require("cookie-parser");
-connectDB()
 app.use(cors({
     origin: process.env.CORS_ORIGIN,
     credentials: true
@@ -24,6 +23,11 @@ app.get('/', (req, res)=>{
 app.get('/ping', (req, res) => {        // To wake the server (render free tier)
     res.send('Pong');
 });
-app.listen(port, ()=>{
-    console.log(`App listening on port ${port}`);
-})
+const startServer = async () => {
+    await connectDB();
+    app.listen(port, ()=>{
+        console.log(`App listening on port ${port}`);
+    });
+};
+
+startServer();

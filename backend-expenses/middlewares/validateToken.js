@@ -1,6 +1,5 @@
 const jwt = require("jsonwebtoken")
 const asyncHandler = require("express-async-handler");
-const { error } = require("console");
 
 const validateToken = asyncHandler(async(req, res, next)=>{
     let token;
@@ -15,7 +14,7 @@ const validateToken = asyncHandler(async(req, res, next)=>{
         res.status(401);
         throw new Error("Access token is missing!");
     }
-    jwt.verify(token, process.env.SECRET_KEY, (err, decoded)=>{
+    jwt.verify(token, process.env.JWT_SECRET, (err, decoded)=>{
         if(err){
             res.status(401);
             throw new Error("User is not authorized!  Please Sign-in first!")
